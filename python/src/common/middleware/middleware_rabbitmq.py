@@ -97,7 +97,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     def send(self, message):
         self.channel.basic_publish(
             exchange=self.exchange_name,
-            routing_key=random.choice(self.routing_keys),
+            routing_key=self.routing_keys[0],
             body=message,
             properties=pika.BasicProperties(
                 delivery_mode=pika.DeliveryMode.Persistent,
