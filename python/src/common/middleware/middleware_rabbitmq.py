@@ -95,15 +95,20 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
         self.routing_keys = routing_keys
 
     def send(self, message):
-        self.channel.basic_publish(
-            exchange=self.exchange_name,
-            routing_key=self.routing_keys[0],
-            body=message,
-            properties=pika.BasicProperties(
-                delivery_mode=pika.DeliveryMode.Persistent,
+        try:
+            self.channel.basic_publish(
+                exchange=self.exchange_name,
+                routing_key=self.routing_keys[0],
+                body=message,
+                properties=pika.BasicProperties(
+                    delivery_mode=pika.DeliveryMode.Persistent,
+                )
             )
-        )
-        
+        except DISCONNECTED_EXCEPTIONS as exc:
+            raise MessageMiddlewareDisconnectedError() from exc
+        except Exception as exc:
+            raise MessageMiddlewareMessageError() from exc
+
     def start_consuming(self, on_message_callback):
         try:
             result = self.channel.queue_declare(queue='', exclusive=True)
