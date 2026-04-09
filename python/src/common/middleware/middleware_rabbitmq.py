@@ -11,9 +11,6 @@ from .middleware import (
 
 DISCONNECTED_EXCEPTIONS = (
     pika.exceptions.AMQPConnectionError,
-    pika.exceptions.ConnectionClosed,
-    pika.exceptions.ChannelWrongStateError,
-    pika.exceptions.StreamLostError,
 )
 
 
@@ -35,6 +32,7 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
         self.channel = self.connection.channel()
         self.channel.queue_declare(queue=queue_name, durable=True, arguments={'x-queue-type': 'quorum'})
+        self.channel.confirm_delivery()
         self.queue_name = queue_name
 
     def send(self, message):
@@ -91,6 +89,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
         self.channel = self.connection.channel()
         self.channel.exchange_declare(exchange=exchange_name, exchange_type='direct', durable=True)
+        self.channel.confirm_delivery()
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
 
