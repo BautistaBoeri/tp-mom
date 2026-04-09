@@ -54,10 +54,10 @@ class MessageMiddlewareQueueRabbitMQ(MessageMiddlewareQueue):
 
     def start_consuming(self, on_message_callback):
         try:
+            self.channel.basic_qos(prefetch_count=1)
             self.channel.basic_consume(
                 queue=self.queue_name,
-                on_message_callback=_build_callback(on_message_callback),
-                auto_ack=False
+                on_message_callback=_build_callback(on_message_callback)
             )
             self.channel.start_consuming()
         except DISCONNECTED_EXCEPTIONS as exc:
@@ -90,20 +90,21 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
     def __init__(self, host, exchange_name, routing_keys):
         self.connection = pika.BlockingConnection(pika.ConnectionParameters(host=host))
         self.channel = self.connection.channel()
-        self.channel.exchange_declare(exchange=exchange_name, exchange_type='direct')
+        self.channel.exchange_declare(exchange=exchange_name, exchange_type='direct', durable=True)
         self.exchange_name = exchange_name
         self.routing_keys = routing_keys
 
     def send(self, message):
         try:
-            self.channel.basic_publish(
-                exchange=self.exchange_name,
-                routing_key=self.routing_keys[0],
-                body=message,
-                properties=pika.BasicProperties(
-                    delivery_mode=pika.DeliveryMode.Persistent,
+            for routing_key in self.routing_keys:
+                self.channel.basic_publish(
+                    exchange=self.exchange_name,
+                    routing_key=routing_key,
+                    body=message,
+                    properties=pika.BasicProperties(
+                        delivery_mode=pika.DeliveryMode.Persistent,
+                    )
                 )
-            )
         except DISCONNECTED_EXCEPTIONS as exc:
             raise MessageMiddlewareDisconnectedError() from exc
         except Exception as exc:
@@ -119,8 +120,7 @@ class MessageMiddlewareExchangeRabbitMQ(MessageMiddlewareExchange):
             
             self.channel.basic_consume(
                 queue=queue_name,
-                on_message_callback=_build_callback(on_message_callback),
-                auto_ack=False
+                on_message_callback=_build_callback(on_message_callback)
             )
             self.channel.start_consuming()
         except DISCONNECTED_EXCEPTIONS as exc:
